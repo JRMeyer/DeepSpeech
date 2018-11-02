@@ -5,8 +5,7 @@ source ../tmp/venv/bin/activate
 # this script splits into train/dev/test and saves to the arg dir
 python ./filter_cv1_dev_test.py "../keep" 
 
-
-data="../keep"
+data="/snakepit/shared/data/mozilla/CommonVoice/v2.0-alpha1.0/ky"
 
 
 python3 -u DeepSpeech.py \
