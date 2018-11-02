@@ -3,7 +3,7 @@
 source ../tmp/venv/bin/activate
 
 # this script splits into train/dev/test and saves to the arg dir
-python filter_cv1_dev_test.py ../keep 
+python ./filter_cv1_dev_test.py "../keep" 
 
 
 data="../keep"
@@ -23,5 +23,5 @@ python3 -u DeepSpeech.py \
   --display_step 0 \
   --validation_step 1 \
   --checkpoint_dir "../keep" \
-  --summary_dir "../keep/summaries"
+  --summary_dir "../keep/summaries" \
   --decoder_library_path "../tmp/native_client/libctc_decoder_with_kenlm.so"
