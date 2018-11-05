@@ -3,15 +3,24 @@
 source ../tmp/venv/bin/activate
 
 # this script splits into train/dev/test and saves to the arg dir
-python ./filter_cv1_dev_test.py "../keep" 
+for lang in 'en' 'de' 'fr' 'cv' 'zh-TW'; 
+do
+    python ./filter_cv1_dev_test.py "${lang}" "../keep";
+done
+
+for i in ../keep/*.csv;
+do
+    echo `wc -l ${i}`;
+done
+
 
 data="../keep"
-
+lang='cv'
 
 python3 -u DeepSpeech.py \
-  --train_files "${data}/cv_ky_valid_train.csv"\
-  --dev_files "${data}/cv_ky_valid_dev.csv" \
-  --test_files "${data}/cv_ky_valid_test.csv" \
+  --train_files "${data}/cv_${lang}_valid_train.csv"\
+  --dev_files "${data}/cv_${lang}_valid_dev.csv" \
+  --test_files "${data}/cv_${lang}_valid_test.csv" \
   --train_batch_size 24 \
   --dev_batch_size 48 \
   --test_batch_size 48 \
