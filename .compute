@@ -5,7 +5,7 @@ source ../tmp/venv/bin/activate
 # this script splits into train/dev/test and saves to the arg dir
 for lang in 'en' 'de' 'fr' 'cv' 'zh-TW'; 
 do
-    python ./filter_cv1_dev_test.py "${lang}" "../keep";
+    python ./filter_train_dev_test.py "${lang}" "../keep";
 done
 
 for i in ../keep/*.csv;
