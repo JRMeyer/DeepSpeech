@@ -24,8 +24,8 @@ the cv_LOCALE_valid.csv file.
 LOCALE = sys.argv[1]
 output_folder = sys.argv[2]
 
-#ABS_PATH='/snakepit/shared/data/mozilla/CommonVoice/v2.0-alpha1.0'
-ABS_PATH='/home/josh/git/DeepSpeech/new'
+ABS_PATH='/snakepit/shared/data/mozilla/CommonVoice/v2.0-alpha1.0'
+#ABS_PATH='/home/josh/git/DeepSpeech/new'
 
 # First, we import the main csv file which stores all the data for all languages,
 # whether or not they've been validated (the file is called clips.tsv) 
