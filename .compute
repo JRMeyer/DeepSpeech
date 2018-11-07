@@ -32,8 +32,8 @@ lang='cv'
 
 
 python3 -u DeepSpeech.py \
-	--lm_binary_path data/lm.binary \
-	--lm_trie_path data/trie \
+	--lm_binary_path "data/lm.binary" \
+	--lm_trie_path "data/trie" \
 	--epoch 2 \
 	--train_files "${data}/cv_${lang}_valid_train.csv"\
 	--dev_files "${data}/cv_${lang}_valid_dev.csv" \
