@@ -2,8 +2,21 @@
 
 source ../tmp/venv/bin/activate
 
+
+
+
+
+
+# ### DOWNLOAD OFFICIAL ENGLISH CHECKPOINT
+# echo "$0: BEGIN download and untar checkpoint..."
+# wget https://github.com/mozilla/DeepSpeech/releases/download/v0.3.0/deepspeech-0.3.0-checkpoint.tar.gz --directory-prefix="../keep"
+# mkdir ../keep/ckpt
+# tar -xvf ../keep/deepspeech-0.3.0-checkpoint.tar.gz --directory ../keep/ckpt
+# echo "$0: END download and untar checkpoint..."
+
+
 # this script splits into train/dev/test and saves to the arg dir
-for lang in 'en' 'de' 'fr' 'cv' 'zh-TW'; 
+for lang in 'cv'; 
 do
     python ./filter_train_dev_test.py "${lang}" "../keep";
 done
@@ -15,21 +28,26 @@ done
 
 
 data="../keep"
-lang='en'
+lang='cv'
+
 
 python3 -u DeepSpeech.py \
-  --train_files "${data}/cv_${lang}_valid_train.csv"\
-  --dev_files "${data}/cv_${lang}_valid_dev.csv" \
-  --test_files "${data}/cv_${lang}_valid_test.csv" \
-  --train_batch_size 24 \
-  --dev_batch_size 48 \
-  --test_batch_size 48 \
-  --n_hidden 2048 \
-  --learning_rate 0.0001 \
-  --dropout_rate 0.2 \
-  --epoch 2 \
-  --display_step 0 \
-  --validation_step 1 \
-  --checkpoint_dir "../keep" \
-  --summary_dir "../keep/summaries" \
-  --decoder_library_path "../tmp/native_client/libctc_decoder_with_kenlm.so"
+	--lm_binary_path data/lm.binary \
+	--lm_trie_path data/trie \
+	--epoch 2 \
+	--train_files "${data}/cv_${lang}_valid_train.csv"\
+	--dev_files "${data}/cv_${lang}_valid_dev.csv" \
+	--test_files "${data}/cv_${lang}_valid_test.csv" \
+	--train_batch_size 24 \
+	--dev_batch_size 48 \
+	--test_batch_size 48 \
+	--n_hidden 2048 \
+	--learning_rate 0.0001 \
+	--dropout_rate 0.2 \
+	--display_step 0 \
+	--validation_step 1 \
+	--checkpoint_dir "../keep" \
+	--summary_dir "../keep/summaries" \
+	--decoder_library_path "../tmp/native_client/libctc_decoder_with_kenlm.so"
+        # --checkpoint_dir "${data}/ckpt" \
+
