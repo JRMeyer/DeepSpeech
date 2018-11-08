@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "pwd: " `pwd`
+
 source ../tmp/venv/bin/activate
 
 # this script splits into train/dev/test and saves to the arg dir
