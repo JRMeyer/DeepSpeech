@@ -12,21 +12,9 @@
 #include "fst/fstlib.h"
 #include "path_trie.h"
 
-
-namespace { // defining neginf (negative infinity) for kws
-static const float neginf = -std::numeric_limits<float>::infinity();
-inline float log_add(float a, float b) {
-    if (a == neginf) return b;
-    if (b == neginf) return a;
-    if (a > b)
-        return log1p(exp(b-a)) + a;
-    else
-        return log1p(exp(a-b)) + b;}
-}
-
 // helper function for kws_init
 int setup_labels(const std::vector<int>& labels,
-                 const int blank,
+                 const int blank_id_,
                  std::vector<int>& labels_w_blanks,
                  std::vector<int>& s_inc,
                  std::vector<int>& e_inc) {
@@ -49,38 +37,96 @@ int setup_labels(const std::vector<int>& labels,
     e_inc.push_back(1);
 
     for (int i = 0; i < L; ++i) {
-        labels_w_blanks.push_back(blank);
+        labels_w_blanks.push_back(blank_id_);
         labels_w_blanks.push_back(labels[i]);
     }
-    labels_w_blanks.push_back(blank);
+    labels_w_blanks.push_back(blank_id_);
 
     return repeats;
 }
 
+
+// helper function for kws_next
+double log_add(double a, double b, double neginf) {
+      if (a == neginf) return b;
+      if (b == neginf) return a;
+      if (a > b)
+        return log1p(exp(b-a)) + a;
+      else
+        return log1p(exp(a-b)) + b;
+}
+
 // to be called from Decoder::init
 int
-kws_init(const int T, const int blank, const std::vector<int>& labels) {
-    std::vector<int> labels_w_blanks;
-    std::vector<int> e_inc;
-    std::vector<int> s_inc;
-    int repeats = setup_labels(labels, blank, labels_w_blanks, s_inc, e_inc);
-    const int S = labels_w_blanks.size();
-
-    float* prev_alphas = new float[S];
-    float* next_alphas = new float[S];
-
+DecoderState::kws_init(const Alphabet& alphabet,
+                       const std::vector<int>& labels)
+{
+    blank_id_ = alphabet.GetSize();
+    int repeats = setup_labels(labels,
+                               blank_id_,
+                               labels_w_blanks,
+                               s_inc,
+                               e_inc);
+    S = labels_w_blanks.size();
+    prev_alphas = new double[S];
+    next_alphas = new double[S];
+    neginf = -std::numeric_limits<double>::infinity();
     std::fill(prev_alphas, prev_alphas + S, neginf);
-    // int start =  (((S /2) + repeats - T) < 0) ? 0 : 1,
-    //         end = S > 1 ? 2 : 1;
-    // for (int i = start; i < end; ++i) {
-    //     if (i == 0) {
-    //         prev_alphas[i] = std::log(1 - probs[labels_w_blanks[1]]);
-    //     } else {
-    //         int l = labels_w_blanks[i];
-    //         prev_alphas[i] = std::log(probs[l]);
-    //     }
-    // }
     return 0;
+}
+
+// to be called from Decoder::next
+void
+DecoderState::kws_next(const double* probs,
+                       const int T,
+                       const int alphabet_size)
+{
+    int kws_start =  (((S /2) + repeats - T) < 0) ? 0 : 1,
+      kws_end = S > 1 ? 2 : 1;
+    for (int i = kws_start; i < kws_end; ++i) {
+        if (i == 0) {
+            prev_alphas[i] = std::log(1 - probs[labels_w_blanks[1]]);
+        } else {
+            int l = labels_w_blanks[i];
+            prev_alphas[i] = std::log(probs[l]);
+        }
+    }
+    for(int t = 1; t < T; ++t) {
+      std::fill(next_alphas, next_alphas + S, neginf);
+
+      int remain = (S / 2) + repeats - (T - t);
+      if(remain >= 0)
+        kws_start += s_inc[remain];
+      if(t <= (S / 2) + repeats)
+        kws_end += e_inc[t - 1];
+      int startloop = kws_start;
+      int idx = t * alphabet_size;
+
+      if (kws_start == 0) {
+        double star_score = std::log(1 - probs[idx + labels_w_blanks[1]]);
+        next_alphas[0] = prev_alphas[0] + star_score;
+        startloop += 1;
+      }
+
+      for(int i = startloop; i < kws_end; ++i) {
+        int l = labels_w_blanks[i];
+        double prev_sum = log_add(prev_alphas[i], prev_alphas[i-1], neginf);
+
+        // Skip two if not on blank and not on repeat.
+        if (l != blank_id_ && i != 1 &&
+            l != labels_w_blanks[i-2])
+          prev_sum = log_add(prev_sum, prev_alphas[i-2], neginf);
+
+        next_alphas[i] = prev_sum;
+        if (i == labels_w_blanks.size() - 1) {
+          double nl_score = probs[idx + labels_w_blanks[i-1]];
+          next_alphas[i] += std::log(1 - nl_score);
+        } else {
+          next_alphas[i] += std::log(probs[l + idx]);
+        }
+      }
+      std::swap(prev_alphas, next_alphas);
+    }
 }
 
 int
@@ -113,11 +159,6 @@ DecoderState::init(const Alphabet& alphabet,
     auto matcher = std::make_shared<fst::SortedMatcher<PathTrie::FstType>>(*dict_ptr, fst::MATCH_INPUT);
     root->set_matcher(matcher);
   }
-
-  // init kws variables
-  // int T = 1000;
-  // const std::vector<int>& keyword = {1,2,3};
-  // kws_init(T, blank_id_, keyword);
   return 0;
 }
 
@@ -230,6 +271,20 @@ DecoderState::next(const double *probs,
   }  // end of loop over time
 }
 
+double
+DecoderState::kws_decode() const
+{
+    double loglike = neginf;
+    for(int i = kws_start; i < kws_end; ++i) {
+      loglike = log_add(loglike, prev_alphas[i], neginf);
+    }
+    // Cleanup
+    delete[] prev_alphas;
+    delete[] next_alphas;
+
+    return -loglike;
+}
+
 std::vector<Output>
 DecoderState::decode() const
 {
@@ -303,6 +358,32 @@ std::vector<Output> ctc_beam_search_decoder(
   state.next(probs, time_dim, class_dim);
   return state.decode();
 }
+
+
+double kws_decoder(
+    const double *probs,
+    int time_dim,
+    int class_dim,
+    const Alphabet &alphabet,
+    size_t beam_size,
+    double cutoff_prob,
+    size_t cutoff_top_n,
+    Scorer *ext_scorer)
+{
+  DecoderState state;
+  // init kws variables
+  const std::vector<int>& keyword = {1,2,3};
+  state.kws_init(alphabet, keyword);
+  // next kws
+  int T = 1000;
+  const int alphabet_size = 29;
+  state.kws_next(probs,T,alphabet_size);
+  return state.kws_decode();
+}
+
+
+
+
 
 std::vector<std::vector<Output>>
 ctc_beam_search_decoder_batch(

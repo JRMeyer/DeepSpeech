@@ -250,9 +250,12 @@ StreamingState::processBatch(const vector<float>& buf, unsigned int n_steps)
   // Convert logits to double
   vector<double> inputs(logits.begin(), logits.end());
 
-  decoder_state_.next(inputs.data(),
+  decoder_state_.kws_next(inputs.data(),
                       n_frames,
                       num_classes);
+  // decoder_state_.next(inputs.data(),
+  //                     n_frames,
+  //                     num_classes);
 }
 
 int
@@ -344,11 +347,14 @@ DS_CreateStream(ModelState* aCtx,
   const int cutoff_top_n = 40;
   const double cutoff_prob = 1.0;
 
-  ctx->decoder_state_.init(aCtx->alphabet_,
-                           aCtx->beam_width_,
-                           cutoff_prob,
-                           cutoff_top_n,
-                           aCtx->scorer_.get());
+  const std::vector<int>& keyword = {1,2,3};
+  ctx->decoder_state_.kws_init(aCtx->alphabet_,
+                               keyword);
+    // ctx->decoder_state_.init(aCtx->alphabet_,
+    //                        aCtx->beam_width_,
+    //                        cutoff_prob,
+    //                        cutoff_top_n,
+    //                        aCtx->scorer_.get());
 
   *retval = ctx.release();
   return DS_ERR_OK;

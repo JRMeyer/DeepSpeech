@@ -16,6 +16,19 @@ class DecoderState {
   double cutoff_prob_;
   size_t cutoff_top_n_;
 
+  // kws variables start
+  int S;
+  std::vector<int> labels_w_blanks;
+  std::vector<int> e_inc;
+  std::vector<int> s_inc;
+  int repeats;
+  double* prev_alphas;
+  double* next_alphas;
+  double neginf;
+  int kws_start;
+  int kws_end;
+  // kws variables end
+
   Scorer* ext_scorer_; // weak
   std::vector<PathTrie*> prefixes_;
   std::unique_ptr<PathTrie> prefix_root_;
@@ -47,6 +60,16 @@ public:
            size_t cutoff_top_n,
            Scorer *ext_scorer);
 
+    /* Initialize KWS + CTC decoder
+   *
+   * Parameters:
+   *
+   * Return:
+   *     Zero on success, non-zero on failure.
+  */
+  int kws_init(const Alphabet& alphabet,
+               const std::vector<int>& labels);
+
   /* Send data to the decoder
    *
    * Parameters:
@@ -59,6 +82,12 @@ public:
             int time_dim,
             int class_dim);
 
+    /* Send data to the KWS decoder
+   *
+   * Parameters:
+  */
+  void kws_next(const double* probs, const int T, const int alphabet_size);
+
   /* Get transcription from current decoder state
    *
    * Return:
@@ -66,6 +95,7 @@ public:
    *     in descending order.
   */
   std::vector<Output> decode() const;
+  double kws_decode() const;
 };
 
 
@@ -86,6 +116,16 @@ public:
  *     A vector where each element is a pair of score and decoding result,
  *     in descending order.
 */
+
+double kws_decoder(
+    const double* probs,
+    int time_dim,
+    int class_dim,
+    const Alphabet &alphabet,
+    size_t beam_size,
+    double cutoff_prob,
+    size_t cutoff_top_n,
+    Scorer *ext_scorer);
 
 std::vector<Output> ctc_beam_search_decoder(
     const double* probs,
