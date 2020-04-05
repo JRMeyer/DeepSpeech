@@ -90,7 +90,9 @@ LocalDsSTT(ModelState* aCtx, const short* aBuffer, size_t aBufferSize,
     }
     res.string = DS_FinishStream(ctx);
   } else {
-    res.string = DS_SpeechToText(aCtx, aBuffer, aBufferSize);
+    // res.string = DS_SpeechToText(aCtx, aBuffer, aBufferSize);
+    double res_kws;
+    res_kws = DS_kwsSpeechToText(ctx, aBuffer, aBufferSize);
   }
 
   clock_t ds_end_infer = clock();
@@ -98,7 +100,64 @@ LocalDsSTT(ModelState* aCtx, const short* aBuffer, size_t aBufferSize,
   res.cpu_time_overall =
     ((double) (ds_end_infer - ds_start_time)) / CLOCKS_PER_SEC;
 
-  return res;
+  return res_kws;
+}
+
+
+
+double
+kwsLocalDsSTT(ModelState* aCtx, const short* aBuffer, size_t aBufferSize,
+           bool extended_output, bool json_output)
+{
+  ds_result res = {0};
+
+  clock_t ds_start_time = clock();
+
+  if (extended_output) {
+    Metadata *metadata = DS_SpeechToTextWithMetadata(aCtx, aBuffer, aBufferSize);
+    res.string = metadataToString(metadata);
+    DS_FreeMetadata(metadata);
+  } else if (json_output) {
+    Metadata *metadata = DS_SpeechToTextWithMetadata(aCtx, aBuffer, aBufferSize);
+    res.string = JSONOutput(metadata);
+    DS_FreeMetadata(metadata);
+  } else if (stream_size > 0) {
+    StreamingState* ctx;
+    int status = DS_CreateStream(aCtx, &ctx);
+    if (status != DS_ERR_OK) {
+      res.string = strdup("");
+      return res;
+    }
+    size_t off = 0;
+    const char *last = nullptr;
+    while (off < aBufferSize) {
+      size_t cur = aBufferSize - off > stream_size ? stream_size : aBufferSize - off;
+      DS_FeedAudioContent(ctx, aBuffer + off, cur);
+      off += cur;
+      const char* partial = DS_IntermediateDecode(ctx);
+      if (last == nullptr || strcmp(last, partial)) {
+        printf("%s\n", partial);
+        last = partial;
+      } else {
+        DS_FreeString((char *) partial);
+      }
+    }
+    if (last != nullptr) {
+      DS_FreeString((char *) last);
+    }
+    res.string = DS_FinishStream(ctx);
+  } else {
+    // res.string = DS_SpeechToText(aCtx, aBuffer, aBufferSize);
+    double res_kws;
+    res_kws = DS_kwsSpeechToText(ctx, aBuffer, aBufferSize);
+  }
+
+  clock_t ds_end_infer = clock();
+
+  res.cpu_time_overall =
+    ((double) (ds_end_infer - ds_start_time)) / CLOCKS_PER_SEC;
+
+  return res_kws;
 }
 
 typedef struct {
@@ -278,6 +337,24 @@ ProcessFile(ModelState* context, const char* path, bool show_times)
   }
 }
 
+
+void
+kwsProcessFile(ModelState* context, const char* path, bool show_times)
+{
+  ds_audio_buffer audio = GetAudioBuffer(path, DS_GetModelSampleRate(context));
+
+  // Pass audio to DeepSpeech
+  // We take half of buffer_size because buffer is a char* while
+  // LocalDsSTT() expected a short*
+  double kws_res = kwsLocalDsSTT(context,
+                                 (const short*)audio.buffer,
+                                 audio.buffer_size / 2,
+                                 extended_metadata,
+                                 json_output);
+  free(audio.buffer);
+  printf("%s\n", kws_res);
+}
+
 char*
 metadataToString(Metadata* metadata)
 {
@@ -402,7 +479,8 @@ main(int argc, char **argv)
     case S_IFLNK:
 #endif
     case S_IFREG:
-        ProcessFile(ctx, audio, show_times);
+        // ProcessFile(ctx, audio, show_times);
+        kwsProcessFile(ctx, audio, show_times);
       break;
 
 #ifndef NO_DIR
@@ -423,7 +501,8 @@ main(int argc, char **argv)
             fullpath << audio << "/" << fname;
             std::string path = fullpath.str();
             printf("> %s\n", path.c_str());
-            ProcessFile(ctx, path.c_str(), show_times);
+            // ProcessFile(ctx, path.c_str(), show_times);
+            kwsProcessFile(ctx, path.c_str(), show_times);
           }
           closedir(wav_dir);
         }

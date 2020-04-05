@@ -78,8 +78,10 @@ struct StreamingState {
 
   void feedAudioContent(const short* buffer, unsigned int buffer_size);
   char* intermediateDecode();
+  double* kwsIntermediateDecode();
   void finalizeStream();
   char* finishStream();
+  double* kwsFinishStream();
   Metadata* finishStreamWithMetadata();
 
   void processAudioWindow(const vector<float>& buf);
@@ -136,11 +138,24 @@ StreamingState::intermediateDecode()
   return model_->decode(decoder_state_);
 }
 
+double*
+StreamingState::kwsIntermediateDecode()
+{
+  return model_->kws_decode(decoder_state_);
+}
+
 char*
 StreamingState::finishStream()
 {
   finalizeStream();
   return model_->decode(decoder_state_);
+}
+
+double*
+StreamingState::kwsFinishStream()
+{
+  finalizeStream();
+  return model_->kws_decode(decoder_state_);
 }
 
 Metadata*
@@ -374,12 +389,26 @@ DS_IntermediateDecode(StreamingState* aSctx)
   return aSctx->intermediateDecode();
 }
 
+double*
+DS_kwsIntermediateDecode(StreamingState* aSctx)
+{
+  return aSctx->kwsIntermediateDecode();
+}
+
 char*
 DS_FinishStream(StreamingState* aSctx)
 {
   char* str = aSctx->finishStream();
   DS_FreeStream(aSctx);
   return str;
+}
+
+double*
+DS_kwsFinishStream(StreamingState* aSctx)
+{
+  double* res = aSctx->kwsFinishStream();
+  DS_FreeStream(aSctx);
+  return res;
 }
 
 Metadata*
@@ -411,6 +440,15 @@ DS_SpeechToText(ModelState* aCtx,
 {
   StreamingState* ctx = CreateStreamAndFeedAudioContent(aCtx, aBuffer, aBufferSize);
   return DS_FinishStream(ctx);
+}
+
+double*
+DS_kwsSpeechToText(ModelState* aCtx,
+                const short* aBuffer,
+                unsigned int aBufferSize)
+{
+  StreamingState* ctx = CreateStreamAndFeedAudioContent(aCtx, aBuffer, aBufferSize);
+  return DS_kwsFinishStream(ctx);
 }
 
 Metadata*

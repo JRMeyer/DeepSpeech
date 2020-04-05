@@ -61,6 +61,7 @@ struct ModelState {
    * @return String representing the decoded text.
    */
   virtual char* decode(const DecoderState& state);
+  virtual double* kws_decode(const DecoderState& state);
 
   /**
    * @brief Return character-level metadata including letter timings.
