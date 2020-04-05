@@ -13,6 +13,76 @@
 #include "path_trie.h"
 
 
+namespace { // defining neginf (negative infinity) for kws
+static const float neginf = -std::numeric_limits<float>::infinity();
+inline float log_add(float a, float b) {
+    if (a == neginf) return b;
+    if (b == neginf) return a;
+    if (a > b)
+        return log1p(exp(b-a)) + a;
+    else
+        return log1p(exp(a-b)) + b;}
+}
+
+// helper function for kws_init
+int setup_labels(const std::vector<int>& labels,
+                 const int blank,
+                 std::vector<int>& labels_w_blanks,
+                 std::vector<int>& s_inc,
+                 std::vector<int>& e_inc) {
+    const int L = labels.size();
+    int repeats = 0;
+    s_inc.push_back(1);
+    for (int i = 1; i < L; ++i) {
+        if (labels[i-1] == labels[i]) {
+            s_inc.push_back(1);
+            s_inc.push_back(1);
+            e_inc.push_back(1);
+            e_inc.push_back(1);
+            ++repeats;
+        }
+        else {
+            s_inc.push_back(2);
+            e_inc.push_back(2);
+        }
+    }
+    e_inc.push_back(1);
+
+    for (int i = 0; i < L; ++i) {
+        labels_w_blanks.push_back(blank);
+        labels_w_blanks.push_back(labels[i]);
+    }
+    labels_w_blanks.push_back(blank);
+
+    return repeats;
+}
+
+// to be called from Decoder::init
+int
+kws_init(const int T, const int blank, const std::vector<int>& labels) {
+    std::vector<int> labels_w_blanks;
+    std::vector<int> e_inc;
+    std::vector<int> s_inc;
+    int repeats = setup_labels(labels, blank, labels_w_blanks, s_inc, e_inc);
+    const int S = labels_w_blanks.size();
+
+    float* prev_alphas = new float[S];
+    float* next_alphas = new float[S];
+
+    std::fill(prev_alphas, prev_alphas + S, neginf);
+    // int start =  (((S /2) + repeats - T) < 0) ? 0 : 1,
+    //         end = S > 1 ? 2 : 1;
+    // for (int i = start; i < end; ++i) {
+    //     if (i == 0) {
+    //         prev_alphas[i] = std::log(1 - probs[labels_w_blanks[1]]);
+    //     } else {
+    //         int l = labels_w_blanks[i];
+    //         prev_alphas[i] = std::log(probs[l]);
+    //     }
+    // }
+    return 0;
+}
+
 int
 DecoderState::init(const Alphabet& alphabet,
                    size_t beam_size,
@@ -44,6 +114,10 @@ DecoderState::init(const Alphabet& alphabet,
     root->set_matcher(matcher);
   }
 
+  // init kws variables
+  // int T = 1000;
+  // const std::vector<int>& keyword = {1,2,3};
+  // kws_init(T, blank_id_, keyword);
   return 0;
 }
 
