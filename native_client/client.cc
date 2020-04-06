@@ -90,9 +90,7 @@ LocalDsSTT(ModelState* aCtx, const short* aBuffer, size_t aBufferSize,
     }
     res.string = DS_FinishStream(ctx);
   } else {
-    // res.string = DS_SpeechToText(aCtx, aBuffer, aBufferSize);
-    double res_kws;
-    res_kws = DS_kwsSpeechToText(ctx, aBuffer, aBufferSize);
+     res.string = DS_SpeechToText(aCtx, aBuffer, aBufferSize);
   }
 
   clock_t ds_end_infer = clock();
@@ -100,63 +98,21 @@ LocalDsSTT(ModelState* aCtx, const short* aBuffer, size_t aBufferSize,
   res.cpu_time_overall =
     ((double) (ds_end_infer - ds_start_time)) / CLOCKS_PER_SEC;
 
-  return res_kws;
+  return res;
 }
 
 
 
 double
-kwsLocalDsSTT(ModelState* aCtx, const short* aBuffer, size_t aBufferSize,
-           bool extended_output, bool json_output)
+kwsLocalDsSTT(ModelState* aCtx,
+              const short* aBuffer,
+              size_t aBufferSize,
+              bool extended_output,
+              bool json_output)
 {
-  ds_result res = {0};
-
-  clock_t ds_start_time = clock();
-
-  if (extended_output) {
-    Metadata *metadata = DS_SpeechToTextWithMetadata(aCtx, aBuffer, aBufferSize);
-    res.string = metadataToString(metadata);
-    DS_FreeMetadata(metadata);
-  } else if (json_output) {
-    Metadata *metadata = DS_SpeechToTextWithMetadata(aCtx, aBuffer, aBufferSize);
-    res.string = JSONOutput(metadata);
-    DS_FreeMetadata(metadata);
-  } else if (stream_size > 0) {
-    StreamingState* ctx;
-    int status = DS_CreateStream(aCtx, &ctx);
-    if (status != DS_ERR_OK) {
-      res.string = strdup("");
-      return res;
-    }
-    size_t off = 0;
-    const char *last = nullptr;
-    while (off < aBufferSize) {
-      size_t cur = aBufferSize - off > stream_size ? stream_size : aBufferSize - off;
-      DS_FeedAudioContent(ctx, aBuffer + off, cur);
-      off += cur;
-      const char* partial = DS_IntermediateDecode(ctx);
-      if (last == nullptr || strcmp(last, partial)) {
-        printf("%s\n", partial);
-        last = partial;
-      } else {
-        DS_FreeString((char *) partial);
-      }
-    }
-    if (last != nullptr) {
-      DS_FreeString((char *) last);
-    }
-    res.string = DS_FinishStream(ctx);
-  } else {
-    // res.string = DS_SpeechToText(aCtx, aBuffer, aBufferSize);
-    double res_kws;
-    res_kws = DS_kwsSpeechToText(ctx, aBuffer, aBufferSize);
-  }
-
-  clock_t ds_end_infer = clock();
-
-  res.cpu_time_overall =
-    ((double) (ds_end_infer - ds_start_time)) / CLOCKS_PER_SEC;
-
+  StreamingState* ctx;
+  double res_kws;
+  res_kws = DS_kwsSpeechToText(ctx, aBuffer, aBufferSize);
   return res_kws;
 }
 
@@ -352,7 +308,7 @@ kwsProcessFile(ModelState* context, const char* path, bool show_times)
                                  extended_metadata,
                                  json_output);
   free(audio.buffer);
-  printf("%s\n", kws_res);
+  printf("%lf\n", kws_res);
 }
 
 char*

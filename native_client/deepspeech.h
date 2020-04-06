@@ -141,7 +141,10 @@ DEEPSPEECH_EXPORT
 char* DS_SpeechToText(ModelState* aCtx,
                       const short* aBuffer,
                       unsigned int aBufferSize);
-
+  
+double* DS_kwsSpeechToText(ModelState* aCtx,
+                          const short* aBuffer,
+                          unsigned int aBufferSize);
 /**
  * @brief Use the DeepSpeech model to perform Speech-To-Text and output metadata 
  * about the results.
