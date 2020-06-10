@@ -342,11 +342,11 @@ std::vector<Output> DecoderState::kws_decode(size_t num_results) const
   outputs.reserve(num_results);
   double loglike = neginf;
   for(int i = kws_start; i < kws_end; ++i) {
-    Output output;
     loglike = log_add(loglike, prev_alphas[i], neginf);
-    output.confidence = -loglike;
-    outputs.push_back(output);
   }
+  Output output;
+  output.confidence = -loglike;
+  outputs.push_back(output);
   return outputs;
 }
 
