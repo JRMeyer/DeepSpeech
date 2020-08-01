@@ -6,6 +6,7 @@
 #include <limits>
 #include <map>
 #include <utility>
+#include <set>
 
 #include "decoder_utils.h"
 #include "ThreadPool.h"
@@ -18,7 +19,9 @@ DecoderState::init(const Alphabet& alphabet,
                    size_t beam_size,
                    double cutoff_prob,
                    size_t cutoff_top_n,
-                   std::shared_ptr<Scorer> ext_scorer)
+                   std::shared_ptr<Scorer> ext_scorer,
+                   std::set<std::string> hot_words,
+                   float boost_coefficient)
 {
   // assign special ids
   abs_time_step_ = 0;
@@ -29,6 +32,8 @@ DecoderState::init(const Alphabet& alphabet,
   cutoff_prob_ = cutoff_prob;
   cutoff_top_n_ = cutoff_top_n;
   ext_scorer_ = ext_scorer;
+  hot_words_ = hot_words;
+  boost_coefficient_ = boost_coefficient;
   start_expanding_ = false;
 
   // init prefixes' root
@@ -134,11 +139,19 @@ DecoderState::next(const double *probs,
 
             // language model scoring
             if (ext_scorer_->is_scoring_boundary(prefix_to_score, c)) {
+              //std::cout << boost_coefficient_ << std::endl;
               float score = 0.0;
+              float hot_boost = 0.0;
               std::vector<std::string> ngram;
               ngram = ext_scorer_->make_ngram(prefix_to_score);
+              for (std::string word : ngram)
+                if ( hot_words_.find(word) != hot_words_.end() ) {
+                  hot_boost += boost_coefficient_;
+                } else {
+                  hot_boost += 1.0;
+                };
               bool bos = ngram.size() < ext_scorer_->get_max_order();
-              score = ext_scorer_->get_log_cond_prob(ngram, bos) * ext_scorer_->alpha;
+              score = ( ext_scorer_->get_log_cond_prob(ngram, bos) / hot_boost ) * ext_scorer_->alpha;
               log_p += score;
               log_p += ext_scorer_->beta;
             }
@@ -223,10 +236,12 @@ std::vector<Output> ctc_beam_search_decoder(
     size_t beam_size,
     double cutoff_prob,
     size_t cutoff_top_n,
-    std::shared_ptr<Scorer> ext_scorer)
+    std::shared_ptr<Scorer> ext_scorer,
+    std::set<std::string> hot_words,
+    float boost_coefficient)
 {
   DecoderState state;
-  state.init(alphabet, beam_size, cutoff_prob, cutoff_top_n, ext_scorer);
+  state.init(alphabet, beam_size, cutoff_prob, cutoff_top_n, ext_scorer, hot_words, boost_coefficient);
   state.next(probs, time_dim, class_dim);
   return state.decode();
 }
@@ -244,7 +259,9 @@ ctc_beam_search_decoder_batch(
     size_t num_processes,
     double cutoff_prob,
     size_t cutoff_top_n,
-    std::shared_ptr<Scorer> ext_scorer)
+    std::shared_ptr<Scorer> ext_scorer,
+    std::set<std::string> hot_words,
+    float boost_coefficient)
 {
   VALID_CHECK_GT(num_processes, 0, "num_processes must be nonnegative!");
   VALID_CHECK_EQ(batch_size, seq_lengths_size, "must have one sequence length per batch element");
@@ -262,7 +279,9 @@ ctc_beam_search_decoder_batch(
                                   beam_size,
                                   cutoff_prob,
                                   cutoff_top_n,
-                                  ext_scorer));
+                                  ext_scorer,
+                                  hot_words,
+                                  boost_coefficient));
   }
 
   // get decoding results

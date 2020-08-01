@@ -397,6 +397,8 @@ main(int argc, char **argv)
     return 1;
   }
 
+  // std::cout << hot_words;
+
   // Initialise DeepSpeech
   ModelState* ctx;
   // sphinx-doc: c_ref_model_start
@@ -412,6 +414,23 @@ main(int argc, char **argv)
     status = DS_SetModelBeamWidth(ctx, beam_width);
     if (status != 0) {
       fprintf(stderr, "Could not set model beam width.\n");
+      return 1;
+    }
+  }
+
+  
+  if (hot_words) {
+    status = DS_EnableHotWords(ctx, hot_words);
+    if (status != 0) {
+      fprintf(stderr, "Could not enable hot words.\n");
+      return 1;
+    }
+  }
+
+  if (boost_coefficient) {
+    status = DS_EnableBoostCoefficient(ctx, boost_coefficient);
+    if (status != 0) {
+      fprintf(stderr, "Could not set boost coefficient.\n");
       return 1;
     }
   }
