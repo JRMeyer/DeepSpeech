@@ -354,17 +354,11 @@ DS_EnableHotWords(ModelState* aCtx,
   std::size_t next = 0;
   std::string delim = ",";
   while ((next = hot_words_.find(delim, last)) != string::npos) {
-    //std::cout << hot_words_.substr(last, next-last) << std::endl;
     aCtx->hot_words_.insert(hot_words_.substr(last, next-last));
     last = next + 1;
   }
-  //std::cout << hot_words_.substr(last) << std::endl;
   aCtx->hot_words_.insert(hot_words_.substr(last));
-  
-  //int err = 0;
-  //if (err != 0) {
-  //  return DS_ERR_INVALID_SCORER;
-  //}
+
   return DS_ERR_OK;
 }
 
@@ -372,7 +366,6 @@ int
 DS_EnableBoostCoefficient(ModelState* aCtx,
                   float aBoostCoefficient)
 {
-  std::cout << aBoostCoefficient;
   aCtx->boost_coefficient_ = aBoostCoefficient;
 
   return DS_ERR_OK;

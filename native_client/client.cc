@@ -397,8 +397,6 @@ main(int argc, char **argv)
     return 1;
   }
 
-  // std::cout << hot_words;
-
   // Initialise DeepSpeech
   ModelState* ctx;
   // sphinx-doc: c_ref_model_start

@@ -139,7 +139,6 @@ DecoderState::next(const double *probs,
 
             // language model scoring
             if (ext_scorer_->is_scoring_boundary(prefix_to_score, c)) {
-              //std::cout << boost_coefficient_ << std::endl;
               float score = 0.0;
               float hot_boost = 0.0;
               std::vector<std::string> ngram;
