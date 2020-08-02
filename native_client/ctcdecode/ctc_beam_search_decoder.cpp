@@ -140,17 +140,25 @@ DecoderState::next(const double *probs,
             // language model scoring
             if (ext_scorer_->is_scoring_boundary(prefix_to_score, c)) {
               float score = 0.0;
-              float hot_boost = 0.0;
               std::vector<std::string> ngram;
               ngram = ext_scorer_->make_ngram(prefix_to_score);
-              for (std::string word : ngram)
+
+              // multiply the hot-word boosting effect for every word occuring
+              // in the prefix that matches a word in the hot-words list
+              // begin with hot_boost == 1.0 == no boost at all
+              float hot_boost = 1.0;
+              for (std::string word : ngram) {
                 if ( hot_words_.find(word) != hot_words_.end() ) {
-                  hot_boost += boost_coefficient_;
-                } else {
-                  hot_boost += 1.0;
-                };
+                  // the boost increases the log_cond_prob(prefix|LM)
+                  // and since the log_cond_prob is negative, we multiply by
+                  // a float <1.0 to increase.
+                  // More matching words == larger boost
+                  hot_boost *= boost_coefficient_;
+                }
+              }
+
               bool bos = ngram.size() < ext_scorer_->get_max_order();
-              score = ( ext_scorer_->get_log_cond_prob(ngram, bos) / hot_boost ) * ext_scorer_->alpha;
+              score = ( ext_scorer_->get_log_cond_prob(ngram, bos) * hot_boost ) * ext_scorer_->alpha;
               log_p += score;
               log_p += ext_scorer_->beta;
             }
