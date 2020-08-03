@@ -143,17 +143,18 @@ DecoderState::next(const double *probs,
               std::vector<std::string> ngram;
               ngram = ext_scorer_->make_ngram(prefix_to_score);
 
-              // multiply the hot-word boosting effect for every word occuring
-              // in the prefix that matches a word in the hot-words list
-              // begin with hot_boost == 1.0 == no boost at all
+              // hot_boost == 1.0 == no boost at all
               float hot_boost = 1.0;
-              for (std::string word : ngram) {
-                if ( hot_words_.find(word) != hot_words_.end() ) {
-                  // the boost increases the log_cond_prob(prefix|LM)
-                  // and since the log_cond_prob is negative, we multiply by
-                  // a float <1.0 to increase.
-                  // More matching words == larger boost
-                  hot_boost *= boost_coefficient_;
+              if (!hot_words_.empty()) {
+                // increase prob of prefix for every word
+                // that matches a word in the hot-words list
+                for (std::string word : ngram) {
+                  if ( hot_words_.find(word) != hot_words_.end() ) {
+                    // increase the log_cond_prob(prefix|LM)
+                    // since the log_cond_prob is negative, we multiply by
+                    // a float <1.0 to increase.
+                    hot_boost *= boost_coefficient_;
+                  }
                 }
               }
 
